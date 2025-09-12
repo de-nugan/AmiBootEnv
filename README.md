@@ -17,7 +17,7 @@ Amiboot was inspired by the rEFInd boot manager, Rob Smith's amazing FloppyBridg
 - Detects hard drives (both directories and native devices) before starting emulation.
 - Integrates the rEFInd boot manager on UEFI systems to provide an Amiga boot selector.
 - Includes a basic AROS system with Directory Opus for importing ROMs, ADFs, HDFs etc. from removable storage "The Amiga Way".
-- Based on Debian 12 and the excellent Amiberry emulator.
+- Based on Debian Linux and the excellent Amiberry emulator.
 
 
 ## Installation ##
@@ -28,14 +28,14 @@ Amiboot was inspired by the rEFInd boot manager, Rob Smith's amazing FloppyBridg
     - Include a root partition of at least 4 GB (bare minimal installation is already 1.8 GB), or just use Guided Partitioning => "Use entire disk"
     - Optional: Add a third /Amiga partition to store the amiboot system files. exFAT filesystem is recommended if installing to removable media to allow easy file management from any PC.
     - At the package selection screen select Debian System Utilities only. ** Do not install an X Windows environment! **
-    - Select a local Debian package mirror when prompted (otherwise APT sources may not be populated).
+    - Select a local Debian package mirror when prompted (otherwise APT sources may be empty).
     - Please see Debian Linux documentation if required.
 3. Boot and login as root
 4. Download the Amiboot self-extracting installer, eg. with wget (check latest release for current download URL):
-    - wget https://github.com/de-nugan/amiboot/releases/download/v0.4.0/amiboot-debian-amd64.zip
+    - wget https://github.com/de-nugan/amiboot/releases/download/0.4.0/amiboot-debian-amd64.run
 5. Run the installer (this will take a few minutes and produce a lot of messages):
     - chmod +x amiboot-debian-amd64.zip
-    - ./amiboot-debian12-amd64.zip
+    - ./amiboot-debian-amd64.zip
 6. Once complete, reboot:
     - shutdown -r now (or hit the power button)
 7. On UEFI systems you should be greeted with the rEFInd boot selector with the following boot options:
