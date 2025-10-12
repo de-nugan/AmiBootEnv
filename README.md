@@ -31,10 +31,12 @@ AmiBootEnv was inspired by the rEFInd boot manager, Rob Smith's amazing FloppyBr
     - At the package selection screen select Debian System Utilities only. ** Do not install an X Windows desktop environment! **
     - Select a local Debian mirror when prompted. This ensures software sources are configured. 
     - Please see Debian Linux documentation if required.
-2. Boot and login as root
-3. Enter the command below exactly as shown. "-qO" is minus q and the capital letter 'Oh'.
+2. Boot and login as root.
+3. Enter the commands below to downlaod and run the Installer. 
 
-      wget -qO - https://raw.githubusercontent.com/de-nugan/AmiBootEnv/master/Install.sh | bash
+    wget https://raw.githubusercontent.com/de-nugan/AmiBootEnv/master/Install.sh
+
+    bash Install.sh
 
 4. READ the warning message, and follow the prompts to install. 
 5. Select 'YES' to install rEFInd if prompted, and 'r' to reboot when complete.
