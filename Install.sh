@@ -147,14 +147,14 @@ else
 
     if [[ -f "${install_archive}" ]]; then
 
-        mkdir -p "/var/tmp/${application_name}" 2>/dev/null
-        unzip -oq "${install_archive}" -d "/var/tmp/${application_name}/"
+        mkdir -p "/var/tmp" 2>/dev/null
+        unzip -oq "${install_archive}" -d "/var/tmp/"
 
     fi
 
-    if [[ -f "/var/tmp/${application_name}/install_root/AmiBE/bin/config.sh" ]]; then
+    if [[ -f "/var/tmp/${install_archive%.${archive_ext}}/install_root/AmiBE/bin/config.sh" ]]; then
 
-        install_source_path="/var/tmp/${application_name}/install_root"
+        install_source_path="/var/tmp/${install_archive%.${archive_ext}}/install_root"
 
     fi
 
@@ -339,7 +339,9 @@ if [[ $(which amiberry) ]]; then
     "./boot-handler.sh"
     popd
 
+    echo
     echo "Installation appears to have been successful!"
+    echo
     echo -n "Enter r to reboot, or any other key to exit. "
 
     read answer
