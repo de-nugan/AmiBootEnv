@@ -64,11 +64,9 @@ Add attached (unmounted) block devices as native drives (equivalent to the "Add 
 #### HDD=AUTO ####
 Add mountable non-system block device partitions as directories, and any non-mountable drives (eg. Amiga native or blank) as native drives.
 
-#### GW=A0 ####
-Add Greaseweazle as DF0: if detected. Greaseweazle has floppy connected on cable in 'A' postiion (after twist). Drive number can be 0, 1, 2 or 3.
-
-#### GW=B0 ####
-Add Greaseweazle as DF0: if detected. Greaseweazle has floppy connected on cable in 'B' postiion (no twist). Drive number can be 0, 1, 2 or 3.
+#### DF0=GWA ####
+Add Greaseweazle as DF0 if attached. Assume Greaseweazle has floppy connected to cable 'A' position (after twist). 
+Drive number can be 0, 1, 2 or 3. GW cable pos can be A or B. Only a single physical drive is supported. 
 
 #### BOOTICON=file.png ####
 Include this configuration in the system boot menu using icon "file.png". Valid icon files are stored in /boot/efi/EFI/refind/amigulator/icons/.
