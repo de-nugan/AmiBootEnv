@@ -19,7 +19,8 @@ while [[ -d "${1}" && $attempts -lt $max_attempts ]]; do
 
         write_log "Unmount ${1}"
 
-        rmdir "${1}"
+        rm "${1}.info" 2>>/dev/null
+        rmdir "${1}" 2>>/dev/null
         rm $(grep -l "${1}" ${var_path}/uae/hddir/*.uae ) 2>>/dev/null
 
     fi

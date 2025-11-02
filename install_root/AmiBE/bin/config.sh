@@ -15,6 +15,7 @@ application_name_short="AmiBE"
 base_path="/${application_name_short}"
 application_path="${base_path}/bin"
 volumes_path="${base_path}/Volumes"
+icons_path="${base_path}/assets/icons"
 var_path="${base_path}/var"
 log_path="${var_path}/log"
 

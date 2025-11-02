@@ -55,7 +55,6 @@ mount_device ()
 
         # Mount successful.
         # Store the path in a var file in case we want to use the unmolested path
-        # GGG copy in .info icon file here!
 
         dd=0
 
@@ -74,6 +73,9 @@ mount_device ()
         mkdir -p "${var_path}/uae/hddir" 2>/dev/null
         echo "filesystem2=rw,DD${dd}:${label}:${volumes_path}/${label},0" > "${var_path}/uae/hddir/${label}.${dd}.uae"
         echo "uaehf1=dir,rw,DD${dd}:${label}:${volumes_path}/${label},0" >> "${var_path}/uae/hddir/${label}.${dd}.uae"
+
+        # Copy in .info icon file
+        cp "${icons_path}/harddisk.info" "${volumes_path}/${label}.info"
 
     else
 

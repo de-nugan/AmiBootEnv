@@ -329,7 +329,7 @@ if [[ $(which amiberry) ]]; then
     if [[ -d /boot/efi/EFI/refind/amiboot/icons/ ]]; then
 
         mkdir -p "${base_path}/assets" 2>/dev/null
-        ln -s /boot/efi/EFI/refind/amiboot/icons/ "${base_path}/assets/" 2>/dev/null
+        ln -s /boot/efi/EFI/refind/amiboot/icons/ "${base_path}/assets/booticons" 2>/dev/null
 
     fi
 
