@@ -69,7 +69,7 @@ Add Greaseweazle as DF0 if attached. Assume Greaseweazle has floppy connected to
 Drive number can be 0, 1, 2 or 3. GW cable pos can be A or B. Only a single physical drive is supported. 
 
 #### BOOTICON=file.png ####
-Include this configuration in the system boot menu using icon "file.png". Valid icon files are stored in /boot/efi/EFI/refind/amigulator/icons/.
+Include this configuration in the system boot menu using icon "file.png". Valid icon files are stored in /AmiBE/assets/icons.
 
 
 ## Boot Icons ##
