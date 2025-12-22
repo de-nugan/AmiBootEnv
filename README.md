@@ -56,7 +56,7 @@ AmiBootEnv was inspired by the rEFInd boot manager, Rob Smith's amazing FloppyBr
 1. Quit Amiberry and press 't' for terminal.
 2. Remove previous installation files from /root/ directory:
 
-    rm *.*
+    rm \*.\*
 
 3. Repeat the wget and bash commands at Installation step 3. 
 
