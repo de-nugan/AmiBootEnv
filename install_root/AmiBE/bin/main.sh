@@ -140,7 +140,7 @@ for dev in $(ls /dev/sd[a-z] 2>/dev/null); do
 done
 
 # Operation
-# Mount anything that's mountable when amiboot starts
+# Mount anything that's mountable when amibootenv starts
 # Mounted devices will be added to configs as directories
 # Unmounted devices will be added to configs as hard drives
 # The usb-watcher will maintain the mounts and update configs after emulation starts
@@ -164,33 +164,76 @@ while [[ 1 ]]; do
 
     . "${my_path}/update-configs.sh"
 
+    if [[ -n $abe_amiberry_launch_delay ]]; then
+        sleep $abe_amiberry_launch_delay 2>/dev/null
+    fi
+
     launch_amiberry "${1}"
 
     clear
+
+    # Calculate timeout action
+    timeout_action=$abe_amiberry_exit_action
+    unset shutdown_switch
+
+    if [[ "${timeout_action}" == "shutdown" ]]; then
+        shutdown_switch="h"
+    elif [[ "${timeout_action}" == "reboot" ]]; then
+        shutdown_switch="r"
+    elif [[ "${timeout_action}" == "shutdown_on_clean" ]]; then
+        # GGG dependency on log path
+        if [[ $(tail -n 5 "${log_path}/amiberry.log" | grep -i "mapped_free") ]]; then
+            shutdown_switch="h"
+            timeout_action="shutdown"
+        else
+            timeout_action="respawn"
+        fi
+    else
+        timeout_action="respawn"
+    fi
+
+    # Trim log files
+    for file in "${log_path}/"*; do
+
+        tail -n $abe_log_maxlines "${file}" > "${file}.tail"
+        mv "${file}.tail" "$file"
+
+    done
+
+    echo "[E]dit ${application_name_cc} Options"
     echo "[T]erminal"
     echo "[R]estart"
     echo "[S]hutdown"
 
-    i=3
+    i=${abe_amiberry_exit_timeout:-3}
     key=
 
-    echo -en "\n${application_name} will restart in ${i}.."
+    echo -en "\n${application_name} will ${timeout_action} in ${i}.."
 
     while [[ $i -gt 0 ]]; do
         read -n 1 -t 1 key
 
         if [[ $key == 't' ]]; then
-            echo -e "\n\n"
+            echo -e "\n\nDropping to terminal. Use 'exit' command to respawn.\n\n"
             exit
         elif [[ $key == 'r' ]]; then
             /sbin/shutdown -r now
         elif [[ $key == 's' ]]; then
             /sbin/shutdown -h now
+        elif [[ $key == 'e' ]]; then
+            unset shutdown_switch
+            micro -colorscheme=material-tc -keymenu=true "${my_path}/options.sh"
+            i=1
+            clear
         fi
 
         ((i--))
         echo -en "\b\b\b${i}.."
     done
+
+    if [[ -n $shutdown_switch ]]; then
+        /sbin/shutdown -$shutdown_switch now
+    fi
 
 done
 

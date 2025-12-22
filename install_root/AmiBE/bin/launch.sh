@@ -5,6 +5,8 @@ my_name="${0##*/}"
 my_path="${0%/${my_name}}"
 . "${my_path}/config.sh"
 
+# amixer sset Master 80% unmute
+
 if [[ $abe_use_xorg ]]; then
 
     startx

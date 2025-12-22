@@ -1,21 +1,13 @@
 #!/bin/bash
 
-# Options
+# Config vars and common functions for amibootenv scripts.
+# Paths should not end with a slash.
 
-# Use XOrg
-# This will run Amiberry under Xorg
-# This can fix some performance issues, but can make it harder to scale emulation to full screen.
-# For best results set display type to "Fullscreen" for native modes and "Windowed" for RTG
-#
-#abe_use_xorg=1
-
-
-
-# Config vars and common functions for amiboot scripts
-# Paths should not end with a slash
+# This file should not be edited.
+# For editable options, see options.sh
 
 release=1
-application_version="0.5.4"
+application_version="0.5.5"
 
 # Installation vars
 application_name_cc="AmiBootEnv"
@@ -44,6 +36,8 @@ initrd_prefix="initrd.img"
 efi_path="/boot/efi/EFI"
 refind_previousboot_file="${efi_path}/refind/vars/PreviousBoot"
 
+# User vars
+. "${application_path}/options.sh"
 
 # Common functions #
 
@@ -71,13 +65,4 @@ write_log ()
 
     fi
 }
-
-
-
-
-
-
-
-
-
 

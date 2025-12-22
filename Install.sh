@@ -181,11 +181,13 @@ cp -R "${install_source_path}/root" /
 
 # Install remaining packages
 install_package plymouth
+install_package plymouth-themes
 install_package inotify-tools
 install_package libegl1
 install_package libgegl-common
 install_package $(apt-cache pkgnames libgegl-0)
 install_package alsa-utils
+install_package micro
 
 # Experimental Xorg support
 install_package xorg
@@ -217,12 +219,16 @@ done
 # Check for EFI System Partition and install rEFInd if found
 if [[ -d "/boot/efi/EFI" ]]; then
 
-    echo "EFI path found. Installing rEFInd.."
-    install_package refind
+    if [[ ! $(dpkg -l | grep -i "refind") ]]; then
+
+        echo "EFI path found. Installing rEFInd.."
+        install_package refind
+
+    fi
 
     refind_config_file="/boot/efi/EFI/refind/refind.conf"
 
-    if [[ ! $(grep "include ${application_name}" "${refind_config_file}") ]]; then
+    if [[ ! $(grep "${application_name}" "${refind_config_file}") ]]; then
 
         echo "" >> "${refind_config_file}"
         echo "# Added by ${application_name}" >> "${refind_config_file}"
@@ -343,8 +349,7 @@ if [[ $(which amiberry) ]]; then
 
     if [[ ! $(grep "${base_path}/bin/launch.sh" /root/.profile) ]]; then
 
-        # Warning. Running from profile as new process (&) may be nice but will break the ctrl+c to exit
-        #write_log install "Adding launcher to root/.profile"
+        # Warning. Running from profile as new process (&) may be nice but will break ctrl+c to exit
         echo "" >> /root/.profile
         echo "# Added by ${application_name}" >> /root/.profile
         echo "clear" >> /root/.profile
