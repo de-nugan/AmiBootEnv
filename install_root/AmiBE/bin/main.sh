@@ -84,10 +84,12 @@ rm "${var_path}/uae/dev/"*.uae 2>/dev/null
 # Remove non-mounted directories in Volumes path
 for dir in "${volumes_path}/"*/; do
 
+    # Below check is required because loop runs once with wildcard on empty
     if [[ -d "${dir}" ]]; then
 
         if [[ ! $(grep "${dir%/}" /proc/mounts) ]]; then
 
+            rm "${dir%/}.info" 2>>/dev/null
             rmdir "${dir%/}" 2>>/dev/null
             rm $(grep -l "${dir%/}" "${var_path}/uae/hddir/"*.uae ) 2>>/dev/null
 
@@ -96,6 +98,23 @@ for dir in "${volumes_path}/"*/; do
     fi
 
 done
+
+# ..And any orphaned .info files
+for file in "${volumes_path}/"*.info; do
+
+    # Below check is required because loop runs once with wildcard on empty
+    if [[ -f "${file}" ]]; then
+
+        if [[ ! -d "${file%.info}" ]]; then
+
+            rm "${file}" 2>>/dev/null
+
+        fi
+
+    fi
+
+done
+
 
 
 # Mount and catalog block devices
