@@ -7,7 +7,7 @@
 # For editable options, see options.sh
 
 release=1
-application_version="0.5.5"
+application_version="0.5.7"
 
 # Installation vars
 application_name_cc="AmiBootEnv"
@@ -36,8 +36,12 @@ initrd_prefix="initrd.img"
 efi_path="/boot/efi/EFI"
 refind_previousboot_file="${efi_path}/refind/vars/PreviousBoot"
 
-# User vars
-. "${application_path}/options.sh"
+# Include user vars with simple sanity check
+if [[ "${application_path}/options.sh" -nt "${application_path}/options_ex.sh" ]]; then
+    grep -e "^abe.*=.*" "${application_path}/options.sh" > "${application_path}/options_ex.sh"
+fi
+
+. "${application_path}/options_ex.sh"
 
 # Common functions #
 

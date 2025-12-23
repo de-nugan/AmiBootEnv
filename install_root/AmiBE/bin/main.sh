@@ -43,6 +43,10 @@ launch_amiberry()
 
         fi
 
+    elif [[ -f "${uae_config_path}/${abe_default_config}.uae" ]]; then
+
+        config_file="${uae_config_path}/${abe_default_config}.uae"
+
     fi
 
     # If $config_file is undefined or doesn't exist, fallback to default if available
@@ -219,6 +223,7 @@ while [[ 1 ]]; do
 
     done
 
+    echo "[A]miberry"
     echo "[E]dit ${application_name_cc} Options"
     echo "[T]erminal"
     echo "[R]estart"
@@ -244,6 +249,9 @@ while [[ 1 ]]; do
             micro -colorscheme=material-tc -keymenu=true "${my_path}/options.sh"
             i=1
             clear
+        elif [[ $key == 'a' ]]; then
+            unset shutdown_switch
+            i=1
         fi
 
         ((i--))

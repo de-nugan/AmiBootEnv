@@ -5,6 +5,12 @@
 # Lines that begin with a '#' are ignored.
 
 
+# Default config
+# Config to run when there's no fancy boot selector. This must match the name in Amiberry exactly.
+#
+abe_default_config=AROS
+
+
 # Default action when Amiberry exits
 # Valid options are: respawn, reboot, shutdown, shutdown_on_clean
 # shutdown_on_clean will attempt to confirm Amiberry exited cleanly before shutting down, otherwise respawn if it crashed.
@@ -33,8 +39,16 @@ abe_log_maxlines=2000
 
 
 # Run Amiberry under Xorg (requires restart)
-# This can fix some performance issues on high res monitors, but can make it harder to scale emulation to full screen.
-# For best results set display type to "Fullscreen" for native modes and "Windowed" for RTG in Amiberry.
+# By default, AmiBootEnv runs under SDL without Xorg. Xorg is an option because it may:
+# - Present better RTG resolution options in hosted systems, especially for funky screen ratios or tiny pixels
+# - Fix some performance issues on high res monitors
+# But it comes with caveats:
+# - Increased boot time
+# - More difficult to scale emulation to full screen
+# For best results under Xorg:
+# - Native modes: Set display type to "Fullscreen" and set preferred resolution in Amiberry.
+# - RTG: Set display type to "Windowed" in Amiberry, and set RTG resolution to match Xorg.
+# Be prepared to experiment!
 #
 #abe_use_xorg=1
 
