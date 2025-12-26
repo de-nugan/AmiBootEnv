@@ -77,12 +77,13 @@ AmiBootEnv was inspired by the rEFInd boot manager, Rob Smith's amazing FloppyBr
     - Hit F12 to open the Amiberry GUI, go to Paths and select "Rescan Paths" to include the new ROMs in Amiberry.
     - To change the default config or enable Amiberry-Lite, Quit Amiberry and hit 'e' to edit user options. When finished, Ctrl+S to save and Ctrl+Q to quit the editor. 
 
-#### CAVEATS on Raspberry Pi ####
-    - Raspberry Pi does not support the rEFInd boot selector, there is no boot-time Amiga config selection available.
+
+Please note the followiung Caveats with AmiBootEnv on Raspberry Pi:
+    - Raspberry Pi does not support the rEFInd boot selector, there is no boot-time Amiga config selection.
     - AmiBootEnv will currently only launch the default config specified in the user options file. 
+    - Amiberry-Lite is recommended for ARM. Due to issues with booting AROS, regular Amiberry is still the default. 
     - Raspberry Pi 5 or better is recommended for the best emulation experience. 
     - AROS on Raspberry Pi is sloooooow. 
-    - Amiberry-Lite is recommended for ARM. Due to issues with booting AROS, regular Amiberry is still the default. 
 
 
 
