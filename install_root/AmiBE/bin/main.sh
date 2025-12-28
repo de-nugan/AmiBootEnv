@@ -62,6 +62,13 @@ launch_amiberry()
             fi
         done
 
+        # Set default selection if prev selection doesn't exist yet
+        if [[ ! -f "${systems_list_file}.selection" ]]; then
+
+            echo "${abe_default_config}" > "${systems_list_file}.selection"
+
+        fi
+
         . "${my_path}/abe-menu.sh" "${systems_list_file}" $abe_postboot_selector_timeout
 
         config_file="${uae_config_path}/${abe_menu_selection}.uae"
