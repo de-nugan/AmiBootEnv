@@ -12,8 +12,13 @@ AMIBERRY_CONFIG_DIR="${uae_config_path}"
 export AMIBERRY_HOME_DIR
 export AMIBERRY_CONFIG_DIR
 
-# Start pulseaudio for systems that need it (eg. if you have no sound at all)
-#pulseaudio --system -D
+# Exit menu options
+exit_menu_file="${var_path}/exit_menu"
+menu_item_respawn="(A)miberry"
+menu_item_options="(E)dit ${application_name_cc} Options"
+menu_item_terminal="(T)erminal"
+menu_item_reboot="(R)eboot"
+menu_item_shutdown="(S)hutdown"
 
 # Just make sure these exist
 mkdir -p "${volumes_path}" 2>/dev/null
@@ -43,6 +48,23 @@ launch_amiberry()
             config_file="${uae_config_path}/${launch_string}.uae"
 
         fi
+
+    elif [[ $abe_use_postboot_selector ]]; then
+
+        # Build systems selection menu
+        systems_list_file="${var_path}/systems_list"
+        rm "${systems_list_file}" 2>/dev/null
+
+        for file in "${uae_config_path}/"*.uae; do
+            if [[ $(grep -i "BOOTICON=" $file) ]]; then
+                filename=${file##*/}
+                echo ${filename%.uae} >> "${systems_list_file}"
+            fi
+        done
+
+        . "${my_path}/abe-menu.sh" "${systems_list_file}" $abe_postboot_selector_timeout
+
+        config_file="${uae_config_path}/${abe_menu_selection}.uae"
 
     elif [[ -f "${uae_config_path}/${abe_default_config}.uae" ]]; then
 
@@ -201,71 +223,47 @@ while [[ 1 ]]; do
 
     clear
 
-    # Calculate timeout action
-    timeout_action=$abe_amiberry_exit_action
-    unset shutdown_switch
+    echo $menu_item_respawn > "${exit_menu_file}"
+    echo $menu_item_options >> "${exit_menu_file}"
+    echo $menu_item_terminal >> "${exit_menu_file}"
+    echo $menu_item_reboot >> "${exit_menu_file}"
+    echo $menu_item_shutdown >> "${exit_menu_file}"
 
-    if [[ "${timeout_action}" == "shutdown" ]]; then
-        shutdown_switch="h"
-    elif [[ "${timeout_action}" == "reboot" ]]; then
-        shutdown_switch="r"
-    elif [[ "${timeout_action}" == "shutdown_on_clean" ]]; then
+    if [[ "${abe_amiberry_exit_action}" == "shutdown" ]]; then
+        echo $menu_item_shutdown > "${exit_menu_file}.selection"
+    elif [[ "${abe_amiberry_exit_action}" == "reboot" ]]; then
+        echo $menu_item_reboot > "${exit_menu_file}.selection"
+    elif [[ "${abe_amiberry_exit_action}" == "shutdown_on_clean" ]]; then
         # GGG dependency on log path
         if [[ $(tail -n 5 "${log_path}/amiberry.log" | grep -i "mapped_free") ]]; then
-            shutdown_switch="h"
-            timeout_action="shutdown"
+            echo $menu_item_shutdown > "${exit_menu_file}.selection"
         else
-            timeout_action="respawn"
+            echo $menu_item_respawn > "${exit_menu_file}.selection"
         fi
     else
-        timeout_action="respawn"
+        echo $menu_item_respawn > "${exit_menu_file}.selection"
     fi
 
     # Trim log files
     for file in "${log_path}/"*; do
-
         tail -n $abe_log_maxlines "${file}" > "${file}.tail"
         mv "${file}.tail" "$file"
-
     done
 
-    echo "[A]miberry"
-    echo "[E]dit ${application_name_cc} Options"
-    echo "[T]erminal"
-    echo "[R]estart"
-    echo "[S]hutdown"
+    # Run the menu
+    . "${my_path}/abe-menu.sh" "${exit_menu_file}" ${abe_amiberry_exit_timeout:-3}
 
-    i=${abe_amiberry_exit_timeout:-3}
-    key=
-
-    echo -en "\n${application_name} will ${timeout_action} in ${i}.."
-
-    while [[ $i -gt 0 ]]; do
-        read -n 1 -t 1 key
-
-        if [[ $key == 't' ]]; then
-            echo -e "\n\nDropping to terminal. Use 'exit' command to respawn.\n\n"
-            exit
-        elif [[ $key == 'r' ]]; then
-            /sbin/shutdown -r now
-        elif [[ $key == 's' ]]; then
-            /sbin/shutdown -h now
-        elif [[ $key == 'e' ]]; then
-            unset shutdown_switch
-            micro -colorscheme=material-tc -keymenu=true "${my_path}/options.sh"
-            i=1
-            clear
-        elif [[ $key == 'a' ]]; then
-            unset shutdown_switch
-            i=1
-        fi
-
-        ((i--))
-        echo -en "\b\b\b${i}.."
-    done
-
-    if [[ -n $shutdown_switch ]]; then
-        /sbin/shutdown -$shutdown_switch now
+    if [[ "${abe_menu_selection}" == "${menu_item_terminal}" ]]; then
+        clear
+        echo -e "\n\nDropping to terminal. Use 'exit' command to respawn.\n\n"
+        exit
+    elif [[ "${abe_menu_selection}" == "${menu_item_reboot}" ]]; then
+        /sbin/shutdown -r now
+    elif [[ "${abe_menu_selection}" == "${menu_item_shutdown}" ]]; then
+        /sbin/shutdown -h now
+    elif [[ "${abe_menu_selection}" == "${menu_item_options}" ]]; then
+        micro -colorscheme=material-tc -keymenu=true "${my_path}/options.sh"
+        clear
     fi
 
 done

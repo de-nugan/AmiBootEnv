@@ -365,7 +365,6 @@ if [[ $(which amiberry) || $(which amiberry-lite) ]]; then
         echo
         #sed -i 's/#abe_use_amiberry_lite=1/abe_use_amiberry_lite=1/' "${base_path}/bin/options.sh"
 
-
     fi
 
     if [[ ! $(grep "${base_path}/bin/launch.sh" /root/.profile) ]]; then

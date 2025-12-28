@@ -11,6 +11,18 @@
 abe_default_config=AROS
 
 
+# Use Post-boot Selector
+# Use post boot config selector menu for systems without UEFI, RPi etc.
+# This has no effect if a rEFInd selection is found
+#
+abe_use_postboot_selector=1
+
+
+# Post-boot Selector Timeout
+#
+#abe_postboot_selector_timeout=5
+
+
 # Use Amiberry-Lite
 # Amiberry-Lite may perform better on some systems, eg. ARM, RPi and older PCs
 #

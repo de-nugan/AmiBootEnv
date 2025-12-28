@@ -7,7 +7,7 @@
 # For editable options, see options.sh
 
 release=1
-application_version="0.5.8"
+application_version="0.5.10"
 
 # Installation vars
 application_name_cc="AmiBootEnv"
@@ -38,10 +38,10 @@ refind_previousboot_file="${efi_path}/refind/vars/PreviousBoot"
 
 # Include user vars with simple sanity check
 if [[ "${application_path}/options.sh" -nt "${application_path}/options_ex.sh" ]]; then
-    # Set the best
-    grep -e "^abe.*=.*" "${application_path}/options.sh" > "${application_path}/options_ex.sh"
-    # Unset the rest
+    # Unset commented vars FIRST
     grep -e "^#abe.*=.*" "${application_path}/options.sh" | sed 's/^#\(abe_.*\)=.*/unset \1/' >> "${application_path}/options_ex.sh"
+    # Then set the rest AFTER
+    grep -e "^abe.*=.*" "${application_path}/options.sh" > "${application_path}/options_ex.sh"
 fi
 
 . "${application_path}/options_ex.sh"
