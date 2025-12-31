@@ -56,9 +56,9 @@ launch_amiberry()
         rm "${systems_list_file}" 2>/dev/null
 
         for file in "${uae_config_path}/"*.uae; do
-            if [[ $(grep -i "BOOTICON=" $file) ]]; then
-                filename=${file##*/}
-                echo ${filename%.uae} >> "${systems_list_file}"
+            if [[ $(grep -i "BOOTICON=" "${file}") ]]; then
+                filename="${file##*/}"
+                echo "${filename%.uae}" >> "${systems_list_file}"
             fi
         done
 
