@@ -50,7 +50,6 @@ AmiBootEnv was inspired by the rEFInd boot manager, Rob Smith's amazing FloppyBr
     - The USB drive should be accessible under the "Volumes:" drive in AROS.
     - Copy files from under "Volumes:" to the required locations in the "UAE:" drive.
     - The included A500 and A1200 configs will look for roms named kick13.rom and kick31.rom respectively. 
-    - Hit F12 to open the Amiberry GUI, go to Paths and select "Rescan Paths" to include the new ROMs in Amiberry.
 
 
 
@@ -74,17 +73,14 @@ AmiBootEnv was inspired by the rEFInd boot manager, Rob Smith's amazing FloppyBr
     - The USB drive should be accessible under the "Volumes:" drive in AROS.
     - Copy files from under "Volumes:" to the required locations in the "UAE:" drive.
     - The included A500 and A1200 configs will look for roms named kick13.rom and kick31.rom respectively. 
-    - Hit F12 to open the Amiberry GUI, go to Paths and select "Rescan Paths" to include the new ROMs in Amiberry.
-    - To change the default config or enable Amiberry-Lite, Quit Amiberry and hit 'e' to edit user options. When finished, Ctrl+S to save and Ctrl+Q to quit the editor. 
 
 
 #### Caveats with Raspberry Pi: ####
 
-- Raspberry Pi does not support the rEFInd boot selector, there is no boot-time Amiga config selection.
-- AmiBootEnv will currently only launch the default config specified in the user options file. 
-- Amiberry-Lite is recommended for ARM. Due to issues with booting AROS, regular Amiberry is still the default. 
+- Raspberry Pi does not support the rEFInd boot selector, there is no pre-boot Amiga config selection. Instead, the post-boot selector menu will appear before starting emulation. 
+- Amiberry-Lite is recommended for ARM. Due to issues with booting AROS, regular Amiberry is still the default. Quit Amiberry and (E)dit options to set the default version.
 - Raspberry Pi 5 or better is recommended for the best emulation experience. 
-- AROS on Raspberry Pi is sloooooow. 
+- AROS on Raspberry Pi is sloooooow.
 
 
 
