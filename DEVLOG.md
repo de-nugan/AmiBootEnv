@@ -235,7 +235,7 @@ When Amiberry exits, it can leave characters in the terminal's stdin buffer (e.g
 keypress used to quit the emulator). `abe-menu.sh` uses `read -rsn1 -t 1` to poll for input.
 On its very first iteration it immediately reads the buffered character. If that character is
 Enter (`""`), `abe-menu.sh` breaks its loop instantly (line 125-126), returning with the
-currently highlighted item selected — which defaults to `(A)miberry`. This breaks out of the
+currently highlighted item selected - which defaults to `(A)miberry`. This breaks out of the
 inner loop and re-enters `launch_amiberry`, which shows the .uae selector.
 
 **Solution:**
@@ -292,7 +292,7 @@ amiberry ALL=(ALL:ALL) NOPASSWD: ALL
 ```
 
 In sudo, the last matching rule wins. Without `NOPASSWD` on the catch-all, it matched every
-command (including reboot/poweroff) and silently required a password — which could not be
+command (including reboot/poweroff) and silently required a password - which could not be
 entered with no TTY, causing sudo to fail with no visible error.
 
 Changed `main.sh` to use `systemctl` instead of `/sbin/shutdown`:
