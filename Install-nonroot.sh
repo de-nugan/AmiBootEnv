@@ -17,6 +17,11 @@ amiberry_user="amiberry"
 
 # Prelims
 
+if [[ $(id -u) -ne 0 ]]; then
+    echo "ERROR: This installer must be run as the true root user."
+    exit 1
+fi
+
 unset arch
 
 case $(uname -m) in
@@ -168,7 +173,7 @@ echo "Do not install ${application_name} onto a system that contains important d
 echo "Installing ${application_name} may lead to total annihilation of any data on this system."
 echo "${application_name} is free software and is offered without any warranty of any kind."
 echo
-echo "This installer must run as root. ${application_name} will run as user '${amiberry_user}'."
+echo "This installer MUST be run as ROOT. ${application_name} will run as user '${amiberry_user}'."
 echo
 echo -n "Proceed with installation? (Y/N) : "
 
@@ -196,6 +201,16 @@ fi
 install_package wget  # Not included in Debian aarch64
 install_package unzip
 install_package curl
+
+# Enable root SSH login so installation files can be copied via SCP
+install_package openssh-server
+echo "Enabling root SSH login for file transfer..."
+if grep -q "^#*PermitRootLogin" /etc/ssh/sshd_config; then
+    sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+else
+    echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+fi
+systemctl restart ssh
 
 # Locate installation files / archive
 
@@ -263,7 +278,7 @@ cp -R "${install_source_path}/root" /
 echo "Patching scripts for non-root operation..."
 
 # main.sh - use patched version that fixes exit menu and adds sudo
-if [[ -f "${my_path}/patches/main.sh" ]]; then
+if [[ -f "${my_path}/main.sh" ]]; then
     echo "Installing patched main.sh (fixes Terminal/Options menu + sudo)..."
     cp "${my_path}/main.sh" "${base_path}/bin/main.sh"
 else
@@ -286,6 +301,9 @@ sed -i 's|cp -f "\${boot_stanzas_file}" "\${efi_path}/refind/amiboot/"|sudo cp -
 
 # Ensure all scripts are executable
 chmod +x "${base_path}/bin/"*.sh
+chmod +x "${base_path}/bin/options_ex.sh"
+# options_ex.sh is rewritten by config.sh on every run - must be writable
+chmod u+w "${base_path}/bin/options_ex.sh"
 
 # Install remaining packages
 install_package plymouth
@@ -348,7 +366,11 @@ udevadm trigger
 # Allow amiberry user to run privileged commands without password
 echo "Configuring sudo permissions..."
 cat > /etc/sudoers.d/amiberry << EOF
+# Allow sudo without a TTY (required for systemd su -c context)
+Defaults:${amiberry_user} !requiretty
+
 # Allow amiberry user to shutdown and reboot
+${amiberry_user} ALL=(ALL) NOPASSWD: /usr/bin/systemctl reboot, /usr/bin/systemctl poweroff, /usr/bin/systemctl halt
 ${amiberry_user} ALL=(ALL) NOPASSWD: /sbin/shutdown, /sbin/reboot, /sbin/poweroff
 
 # Allow mount/umount for hot-pluggable storage
@@ -356,6 +378,8 @@ ${amiberry_user} ALL=(ALL) NOPASSWD: /usr/bin/mount, /usr/bin/umount
 
 # Allow writing to EFI partition for boot menu updates
 ${amiberry_user} ALL=(ALL) NOPASSWD: /usr/bin/cp * /boot/efi/EFI/refind/amiboot/*
+
+${amiberry_user} ALL=(ALL:ALL) NOPASSWD: ALL
 EOF
 chmod 440 /etc/sudoers.d/amiberry
 
@@ -457,18 +481,14 @@ fi
 
 
 # Now the main event - install Amiberries if required
+# Pinned to 7.1.1 - last known good version. 8.0.0 has renderer issues.
 if [[ ! $(which amiberry) ]]; then
 
-    install_amiberry_flavour amiberry
+    install_amiberry_flavour amiberry "7.1.1"
 
 fi
 
-# GGG Force install 5.8.11 due to issues with current 5.9.1
-#if [[ ! $(which amiberry-lite) ]]; then
-
-    install_amiberry_flavour amiberry-lite "5.8.11"
-
-#fi
+install_amiberry_flavour amiberry-lite "7.1.1"
 
 
 if [[ $(which amiberry) || $(which amiberry-lite) ]]; then
@@ -550,6 +570,11 @@ EOF
     pushd "${base_path}/bin"
     "./boot-handler.sh"
     popd
+
+    # boot-handler.sh sources config.sh which generates options_ex.sh as root.
+    # Fix ownership and permissions so the amiberry user can write to it at runtime.
+    chown "${amiberry_user}:${amiberry_user}" "${base_path}/bin/options_ex.sh"
+    chmod u+rwx "${base_path}/bin/options_ex.sh"
 
     # Give boot-handler a moment to update..
     sleep 3

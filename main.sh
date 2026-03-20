@@ -105,7 +105,7 @@ launch_amiberry()
 
     if [[ -f "${config_file}" ]]; then
 
-        $amiberry -f "${config_file}" -s use_gui=no
+        $amiberry -f "${config_file}"
 
     else
 
@@ -228,6 +228,11 @@ while [[ 1 ]]; do
 
     launch_amiberry "${1}"
 
+    # Flush any buffered terminal input left by Amiberry before showing exit menu.
+    # Amiberry may leave keypresses (e.g. Enter) in stdin that would cause the
+    # menu to immediately auto-select on its first read.
+    read -r -t 0.1 -N 10000 discard 2>/dev/null || true
+
     # Inner loop for exit menu - allows returning to menu after Terminal/Options
     while [[ 1 ]]; do
 
@@ -282,9 +287,9 @@ while [[ 1 ]]; do
             # This fixes "cannot set terminal process group" and "no job control" errors
             script -q -c "bash" /dev/null
         elif [[ "${abe_menu_selection}" == *"(R)"* ]]; then
-            sudo /sbin/shutdown -r now
+            sudo systemctl reboot
         elif [[ "${abe_menu_selection}" == *"(S)"* ]]; then
-            sudo /sbin/shutdown -h now
+            sudo systemctl poweroff
         elif [[ "${abe_menu_selection}" == *"(E)"* ]]; then
             clear
             if [[ ! -f "${my_path}/options.sh" ]]; then
