@@ -309,6 +309,39 @@ sudo systemctl poweroff
 
 ---
 
+### Issue 8: Amiberry Pinned to 7.1.1 Due to 8.x Renderer Issues
+
+**Symptoms:** Earlier 8.0.0 builds had renderer issues that broke display output, so the
+installer was pinned to 7.1.1 as the last known good version.
+
+**Root Cause:**
+
+Renderer regressions in the initial Amiberry 8.x releases.
+
+**Solution:**
+
+Upstream has resolved the 8.x renderer issues. Updated `Install-nonroot.sh` to install
+Amiberry 8.1.5 (latest release at time of writing) for both `amiberry` and `amiberry-lite`
+flavours:
+
+```bash
+# Before
+# Pinned to 7.1.1 - last known good version. 8.0.0 has renderer issues.
+if [[ ! $(which amiberry) ]]; then
+    install_amiberry_flavour amiberry "7.1.1"
+fi
+install_amiberry_flavour amiberry-lite "7.1.1"
+
+# After
+# Using 8.1.5 - 8.x renderer issues are now resolved.
+if [[ ! $(which amiberry) ]]; then
+    install_amiberry_flavour amiberry "8.1.5"
+fi
+install_amiberry_flavour amiberry-lite "8.1.5"
+```
+
+---
+
 ## Files Modified
 
 ### New Files
