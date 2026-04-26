@@ -481,14 +481,14 @@ fi
 
 
 # Now the main event - install Amiberries if required
-# Pinned to 7.1.1 - last known good version. 8.0.0 has renderer issues.
+# Using 8.1.5 - 8.x renderer issues are now resolved.
 if [[ ! $(which amiberry) ]]; then
 
-    install_amiberry_flavour amiberry "7.1.1"
+    install_amiberry_flavour amiberry "8.1.5"
 
 fi
 
-install_amiberry_flavour amiberry-lite "7.1.1"
+install_amiberry_flavour amiberry-lite "8.1.5"
 
 
 if [[ $(which amiberry) || $(which amiberry-lite) ]]; then
