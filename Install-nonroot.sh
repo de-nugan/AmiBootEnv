@@ -9,6 +9,17 @@ my_path=${0%/${my_name}}
 
 application_name="AmiBootEnv"
 
+# Unattended mode: skip all interactive prompts (used by the AmiDeb first-boot service).
+unattended=0
+for arg in "$@"; do
+    case "$arg" in
+        --unattended) unattended=1 ;;
+    esac
+done
+if [[ "${AMIBE_UNATTENDED:-}" == "1" ]]; then
+    unattended=1
+fi
+
 base_path="/AmiBE"
 uae_base_path="${base_path}/UAE"
 
@@ -21,6 +32,14 @@ if [[ $(id -u) -ne 0 ]]; then
     echo "ERROR: This installer must be run as the true root user."
     exit 1
 fi
+
+# Mirror all output to a log file as well as the console, so manual installs
+# (Raspberry Pi / amd64) leave a record to inspect after the scrollback is gone.
+# The AmiDeb CD path logs separately via the first-boot wrapper.
+install_log="${base_path}/var/log/install.log"
+mkdir -p "${base_path}/var/log" 2>/dev/null
+exec > >(tee -a "${install_log}") 2>&1
+echo "=== ${application_name} install started: $(date) ==="
 
 unset arch
 
@@ -87,9 +106,12 @@ install_amiberry_flavour ()
 
     if [[ -n "${package_version}" ]]; then
 
-        debfile="./${package_name}_${package_version}_${arch}.deb"
+        # The unpacked .deb name embeds the Debian codename, e.g.
+        # amiberry_8.1.6+trixie_amd64.deb - so match by glob, not an exact
+        # ${name}_${version}_${arch}.deb string (which would miss "+trixie").
+        debfile=$(ls -vr ./${package_name}_${package_version}*${arch}.deb 2>/dev/null | head -1)
 
-        if [[ ! -f $debfile ]]; then
+        if [[ ! -f "$debfile" ]]; then
 
             zipfile="./${package_name}-v${package_version}-debian-${debian_codename}-${arch}.zip"
 
@@ -107,6 +129,9 @@ install_amiberry_flavour ()
                 unzip -o $zipfile
 
             fi
+
+            # Re-resolve after unzip now that the .deb is on disk.
+            debfile=$(ls -vr ./${package_name}_${package_version}*${arch}.deb 2>/dev/null | head -1)
 
         fi
 
@@ -140,7 +165,7 @@ install_amiberry_flavour ()
         fi
     fi
 
-    if [[ -f $debfile ]]; then
+    if [[ -f "$debfile" ]]; then
 
         install_package "${debfile}"
 
@@ -166,18 +191,24 @@ cat 1>&2 << 'EOB'
 
 EOB
 
-echo "WARNING!"
-echo
-echo "${application_name} should ONLY be installed on a clean, minimal Debian Linux system."
-echo "Do not install ${application_name} onto a system that contains important data or is used for any other purpose."
-echo "Installing ${application_name} may lead to total annihilation of any data on this system."
-echo "${application_name} is free software and is offered without any warranty of any kind."
-echo
-echo "This installer MUST be run as ROOT. ${application_name} will run as user '${amiberry_user}'."
-echo
-echo -n "Proceed with installation? (Y/N) : "
-
-read answer
+if [[ $unattended -eq 1 ]]; then
+    # Unattended (e.g. AmiDeb first-boot) install: skip the interactive warning
+    # and confirmation entirely.
+    answer="Y"
+    echo "Unattended mode: proceeding with installation."
+else
+    echo "WARNING!"
+    echo
+    echo "${application_name} should ONLY be installed on a clean, minimal Debian Linux system."
+    echo "Do not install ${application_name} onto a system that contains important data or is used for any other purpose."
+    echo "Installing ${application_name} may lead to total annihilation of any data on this system."
+    echo "${application_name} is free software and is offered without any warranty of any kind."
+    echo
+    echo "This installer MUST be run as ROOT. ${application_name} will run as user '${amiberry_user}'."
+    echo
+    echo -n "Proceed with installation? (Y/N) : "
+    read answer
+fi
 
 if [[ $answer != "y" && $answer != "Y" ]]; then
 
@@ -301,9 +332,14 @@ sed -i 's|cp -f "\${boot_stanzas_file}" "\${efi_path}/refind/amiboot/"|sudo cp -
 
 # Ensure all scripts are executable
 chmod +x "${base_path}/bin/"*.sh
-chmod +x "${base_path}/bin/options_ex.sh"
-# options_ex.sh is rewritten by config.sh on every run - must be writable
-chmod u+w "${base_path}/bin/options_ex.sh"
+# options_ex.sh is a generated cache file (created later by boot-handler.sh ->
+# config.sh) and may not exist yet. Only fix its perms if it is already present;
+# the post-generation chmod near the end of this script handles the usual case.
+if [[ -f "${base_path}/bin/options_ex.sh" ]]; then
+    chmod +x "${base_path}/bin/options_ex.sh"
+    # options_ex.sh is rewritten by config.sh on every run - must be writable
+    chmod u+w "${base_path}/bin/options_ex.sh"
+fi
 
 # Install remaining packages
 install_package plymouth
@@ -335,11 +371,18 @@ if ! id "${amiberry_user}" &>/dev/null; then
         "${amiberry_user}"
 
     # Set password for the new user
-    echo ""
-    echo "Please set a password for the '${amiberry_user}' user."
-    echo "This password is needed for SSH access and sudo commands."
-    echo ""
-    passwd "${amiberry_user}"
+    if [[ $unattended -eq 1 ]]; then
+        # Default kiosk credential (amiberry:amiberry); the operator is expected
+        # to change it post-install. Matches the AmiDeb preseed-created account.
+        echo "Unattended mode: setting default password for '${amiberry_user}'."
+        echo "${amiberry_user}:${amiberry_user}" | chpasswd
+    else
+        echo ""
+        echo "Please set a password for the '${amiberry_user}' user."
+        echo "This password is needed for SSH access and sudo commands."
+        echo ""
+        passwd "${amiberry_user}"
+    fi
 else
     echo "User ${amiberry_user} already exists, ensuring group memberships..."
     usermod -a -G audio,video,input,plugdev,render,tty,dialout "${amiberry_user}"
@@ -481,14 +524,21 @@ fi
 
 
 # Now the main event - install Amiberries if required
-# Using 8.1.5 - 8.x renderer issues are now resolved.
+# Using 8.1.6 - 8.x renderer issues are now resolved.
 if [[ ! $(which amiberry) ]]; then
 
-    install_amiberry_flavour amiberry "8.1.5"
+    install_amiberry_flavour amiberry "8.1.6"
 
 fi
 
-install_amiberry_flavour amiberry-lite "8.1.5"
+# amiberry-lite is the Raspberry Pi / ARM build; it is not published for amd64
+# (and not for Trixie), so only attempt it on arm64. Its version track differs
+# from full Amiberry, so let it resolve the latest available release itself.
+if [[ "${arch}" == "arm64" ]]; then
+
+    install_amiberry_flavour amiberry-lite
+
+fi
 
 
 if [[ $(which amiberry) || $(which amiberry-lite) ]]; then
@@ -532,6 +582,14 @@ if [[ $(which amiberry) || $(which amiberry-lite) ]]; then
 
     fi
 
+    # Amiberry is launched via 'su -c' from getty, which is NOT a login session,
+    # so logind never sets XDG_RUNTIME_DIR (causing "XDG_RUNTIME_DIR is invalid or
+    # not set" warnings from SDL/library probes). Provide a private runtime dir.
+    # tmpfiles re-creates it on every boot (it lives on tmpfs and is cleared).
+    echo "Configuring XDG_RUNTIME_DIR for the ${amiberry_user} kiosk session..."
+    echo "d /run/${amiberry_user} 0700 ${amiberry_user} ${amiberry_user} -" > /etc/tmpfiles.d/amiberry.conf
+    systemd-tmpfiles --create /etc/tmpfiles.d/amiberry.conf
+
     # Configure systemd to run Amiberry directly on tty1 (bypasses login entirely)
     # This method only affects tty1 - SSH logins are unaffected
     echo "Configuring systemd getty override for tty1..."
@@ -540,7 +598,7 @@ if [[ $(which amiberry) || $(which amiberry-lite) ]]; then
     cat > /etc/systemd/system/getty@tty1.service.d/override.conf << EOF
 [Service]
 ExecStart=
-ExecStart=-/usr/bin/su - ${amiberry_user} -c "${base_path}/bin/launch.sh"
+ExecStart=-/usr/bin/su - ${amiberry_user} -c "XDG_RUNTIME_DIR=/run/${amiberry_user} SDL_AUDIODRIVER=alsa ${base_path}/bin/launch.sh"
 StandardInput=tty
 StandardOutput=tty
 EOF
@@ -579,6 +637,38 @@ EOF
     # Give boot-handler a moment to update..
     sleep 3
 
+    # --- Samba share setup -------------------------------------------------
+    # Make the Amiga data partition (/AmiBE/UAE) reachable over the network.
+    # On the AmiDeb CD path the preseed installs the package + copies smb.conf
+    # and the first-boot wrapper sets the password; doing it here too means a
+    # manual install (Raspberry Pi / amd64) gets the share as well. All steps
+    # are idempotent, so running on the CD path again does no harm.
+    echo "Configuring Samba share..."
+    install_package samba
+
+    if [[ -f "${my_path}/smb.conf" ]]; then
+        mkdir -p /etc/samba 2>/dev/null
+        # Preserve the distro's original config once.
+        if [[ -f /etc/samba/smb.conf && ! -f /etc/samba/smb.conf.orig ]]; then
+            cp /etc/samba/smb.conf /etc/samba/smb.conf.orig
+        fi
+        cp "${my_path}/smb.conf" /etc/samba/smb.conf
+    else
+        echo "WARNING: smb.conf not found next to installer; leaving Samba config as-is."
+    fi
+
+    # Set the share login for the amiberry user (default password 'amiberry',
+    # matching the CD install). Change it later with 'sudo smbpasswd ${amiberry_user}'.
+    if printf 'amiberry\namiberry\n' | smbpasswd -s -a "${amiberry_user}"; then
+        echo "Samba login for '${amiberry_user}' set (default password: amiberry)."
+    else
+        echo "WARNING: smbpasswd failed; Samba login for '${amiberry_user}' is NOT set."
+    fi
+
+    systemctl enable smbd  2>/dev/null || echo "WARNING: could not enable smbd."
+    systemctl restart smbd 2>/dev/null || echo "WARNING: could not (re)start smbd."
+    # --- end Samba ---------------------------------------------------------
+
     echo
     echo "Installation appears to have been successful!"
     echo "Amiberry will run as user '${amiberry_user}' (not root)."
@@ -589,18 +679,25 @@ EOF
     echo "NOTE: If any scripts call 'shutdown' or 'reboot' directly,"
     echo "      they should be changed to use 'sudo shutdown' or 'sudo reboot'."
     echo
-    read -p "Press r to reboot, or any other key to exit. " -n 1 answer
-    echo
+    if [[ $unattended -eq 1 ]]; then
+        echo "Unattended mode: skipping reboot prompt (caller handles reboot)."
+    else
+        read -p "Press r to reboot, or any other key to exit. " -n 1 answer
+        echo
 
-    if [[ $answer == "r" || $answer == "R" ]]; then
+        if [[ $answer == "r" || $answer == "R" ]]; then
 
-        /sbin/shutdown -r now
+            /sbin/shutdown -r now
 
+        fi
     fi
 
 else
 
     #write_log install "Amiberry not found. Installation did not complete successfully."
     echo "Amiberry not found. Installation did not complete successfully. Damn!"
+    # Exit non-zero so callers (e.g. the AmiDeb first-boot service) detect the
+    # failure and retry, rather than silently rebooting into a broken system.
+    exit 1
 
 fi

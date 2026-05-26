@@ -17,8 +17,13 @@ exit_menu_file="${var_path}/exit_menu"
 menu_item_respawn="(A)miberry"
 menu_item_options="(E)dit ${application_name_cc} Options"
 menu_item_terminal="(T)erminal"
+menu_item_volume="(V)olume"
 menu_item_reboot="(R)eboot"
 menu_item_shutdown="(S)hutdown"
+# Entry shown in the system selector to return to the exit menu
+menu_item_back="(B)ack to Menu"
+# Set to 1 when the user picks "Back to Menu" so the exit menu waits for input
+abe_back_to_menu=0
 
 # Just make sure these exist
 mkdir -p "${volumes_path}" 2>/dev/null
@@ -62,6 +67,9 @@ launch_amiberry()
             fi
         done
 
+        # Offer a way back to the exit menu (shutdown / reboot / volume / etc.)
+        echo "${menu_item_back}" >> "${systems_list_file}"
+
         # Set default selection if prev selection doesn't exist yet
         if [[ ! -f "${systems_list_file}.selection" ]]; then
 
@@ -70,6 +78,16 @@ launch_amiberry()
         fi
 
         . "${my_path}/abe-menu.sh" "${systems_list_file}" $abe_postboot_selector_timeout
+
+        # "Back to Menu" returns to the exit menu without launching Amiberry.
+        if [[ "${abe_menu_selection}" == *"(B)"* ]]; then
+
+            # Do not let "Back" become the remembered default for next time.
+            echo "${abe_default_config}" > "${systems_list_file}.selection"
+            abe_back_to_menu=1
+            return
+
+        fi
 
         config_file="${uae_config_path}/${abe_menu_selection}.uae"
 
@@ -241,6 +259,7 @@ while [[ 1 ]]; do
         echo $menu_item_respawn > "${exit_menu_file}"
         echo $menu_item_options >> "${exit_menu_file}"
         echo $menu_item_terminal >> "${exit_menu_file}"
+        echo $menu_item_volume >> "${exit_menu_file}"
         echo $menu_item_reboot >> "${exit_menu_file}"
         echo $menu_item_shutdown >> "${exit_menu_file}"
 
@@ -265,8 +284,16 @@ while [[ 1 ]]; do
             mv "${file}.tail" "$file"
         done
 
-        # Run the menu
-        . "${my_path}/abe-menu.sh" "${exit_menu_file}" ${abe_amiberry_exit_timeout:-3}
+        # Run the menu. If we just returned here via "Back to Menu" from the
+        # system selector, wait for an explicit choice instead of auto-timing
+        # out (which would immediately bounce back to the selector).
+        if [[ $abe_back_to_menu -eq 1 ]]; then
+            exit_menu_timeout=86400
+            abe_back_to_menu=0
+        else
+            exit_menu_timeout=${abe_amiberry_exit_timeout:-3}
+        fi
+        . "${my_path}/abe-menu.sh" "${exit_menu_file}" ${exit_menu_timeout}
 
         # Use substring matching with unique hotkey letters for reliable comparison
         if [[ "${abe_menu_selection}" == *"(A)"* ]]; then
@@ -286,6 +313,19 @@ while [[ 1 ]]; do
             # Use script to allocate a pseudo-terminal for bash
             # This fixes "cannot set terminal process group" and "no job control" errors
             script -q -c "bash" /dev/null
+        elif [[ "${abe_menu_selection}" == *"(V)"* ]]; then
+            clear
+            # Adjust the ALSA master volume. alsamixer is an ncurses TUI, so it
+            # needs a pseudo-terminal under the su -c session (as with the editor).
+            if command -v alsamixer &> /dev/null; then
+                script -q -c "alsamixer" /dev/null
+                # Persist the level across reboots (sudoers allows this NOPASSWD).
+                sudo alsactl store 2>/dev/null
+            else
+                echo "alsamixer not found. Press any key to continue..."
+                read -n 1
+            fi
+            # Inner loop continues to show menu after adjusting volume
         elif [[ "${abe_menu_selection}" == *"(R)"* ]]; then
             sudo systemctl reboot
         elif [[ "${abe_menu_selection}" == *"(S)"* ]]; then
