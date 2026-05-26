@@ -345,8 +345,7 @@ install_amiberry_flavour amiberry-lite "8.1.6"
 ### Issue 9: Amiberry .deb Downloaded but Not Installed (Filename Mismatch)
 
 **Context:** Surfaced during the first VM test of the AmiDeb installer ISO (which runs
-`Install-nonroot.sh --unattended` from a first-boot service). See
-`docs/superpowers/specs/2026-05-24-amideb-amibootenv-design.md`.
+`Install-nonroot.sh --unattended` from a first-boot service).
 
 **Symptoms:**
 
