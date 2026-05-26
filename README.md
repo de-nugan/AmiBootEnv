@@ -716,7 +716,8 @@ systemctl enable smbd; systemctl restart smbd
 |----------------------|-------------------------------------------|
 | `main.sh`            | Patched version of main.sh with all fixes |
 | `Install-nonroot.sh` | Modified installer for non-root operation |
-| `DEVLOG.md`          | This development log                      |
+| `smb.conf`           | Samba config file                         |
+| `README.md`          | This development log                      |
 
 ### Changes to Install-nonroot.sh
 
