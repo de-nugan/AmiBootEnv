@@ -342,6 +342,8 @@ install_amiberry_flavour amiberry-lite "8.1.6"
 
 ---
 
+### Combining the AmiBootEnv-Non-Root and AmiDeb into a single system.
+
 May 2026:
 
 Combining the AmiBootEnv-Non-Root installer into the setup process of AmiDeb.
@@ -357,7 +359,7 @@ internet and can take a few minutes - just wait for it to reboot on its own.
 Every boot after that goes directly to Amiberry.
 
 To download the Installer cd head to "https://amiga.vk3heg.net", and choose the
-AmiDeb-Berry link. A install ISO and a Raspberry setup is provided.
+AmiDeb-Berry link. An install ISO and a Raspberry PI4 image file is provided.
 
 ---
 
