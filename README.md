@@ -6,6 +6,24 @@ This document describes modifications made to AmiBootEnv to support running as a
 installation. The original `Install.sh` runs Amiberry as root; the modified `Install-nonroot.sh`
 creates a dedicated `amiberry` user and runs the emulator with reduced privileges.
 
+May 2026:
+
+## Combining the AmiBootEnv-Non-Root and AmiDeb into a single system.
+
+Combining the AmiBootEnv-Non-Root installer into the setup process of AmiDeb.
+Amiberry is run as a dedicated, non-root "amiberry" user, on top of the AmiBootEnv
+boot environment. The install is mostly automatic (unattended). The installer will
+perform the install without prompting and power the system down at the end. After
+the base install powers down, turn the system back on. On the first boot only, AmiDeb
+performs a one-time setup. It downloads and installs Amiberry (8.1.6) and the AmiBootEnv
+files, configures everything, and then reboots straight into Amiberry. This first-boot step
+needs the internet and can take a few minutes - just wait for it to reboot on its own.
+Every boot after that goes directly to Amiberry.
+
+To download the Installer cd head to "https://amiga.vk3heg.net", and choose the AmiDeb-Berry
+link. An install ISO and a Raspberry PI4 image file is provided.
+
+
 ## Issues Identified
 
 ### Issue 1: Exit Menu Options Not Working
