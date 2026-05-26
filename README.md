@@ -342,6 +342,25 @@ install_amiberry_flavour amiberry-lite "8.1.6"
 
 ---
 
+May 2026:
+
+Combining the AmiBootEnv-Non-Root installer into the setup process of AmiDeb.
+Amiberry is run as a dedicated, non-root "amiberry" user, on top of the
+AmiBootEnv boot environment.
+
+The install is mostly automatic (unattended). The installer will perform the install
+without prompting and power the system down at the end. After the base install powers
+down, turn the system back on. On the *first* boot only, AmiDeb performs a one-time
+setup. It downloads and installs Amiberry (8.1.6) and the AmiBootEnv files, configures
+everything, and then reboots straight into Amiberry. This first-boot step needs the
+internet and can take a few minutes - just wait for it to reboot on its own.
+Every boot after that goes directly to Amiberry.
+
+To download the Installer cd head to "https://amiga.vk3heg.net", and choose the
+AmiDeb-Berry link. A install ISO and a Raspberry setup is provided.
+
+---
+
 ### Issue 9: Amiberry .deb Downloaded but Not Installed (Filename Mismatch)
 
 **Context:** Surfaced during the first VM test of the AmiDeb installer ISO (which runs
