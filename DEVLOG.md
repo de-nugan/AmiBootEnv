@@ -321,7 +321,7 @@ Renderer regressions in the initial Amiberry 8.x releases.
 **Solution:**
 
 Upstream has resolved the 8.x renderer issues. Updated `Install-nonroot.sh` to install
-Amiberry 8.1.5 (latest release at time of writing) for both `amiberry` and `amiberry-lite`
+Amiberry 8.1.6 (latest release at time of writing) for both `amiberry` and `amiberry-lite`
 flavours:
 
 ```bash
@@ -333,11 +333,359 @@ fi
 install_amiberry_flavour amiberry-lite "7.1.1"
 
 # After
-# Using 8.1.5 - 8.x renderer issues are now resolved.
+# Using 8.1.6 - 8.x renderer issues are now resolved.
 if [[ ! $(which amiberry) ]]; then
-    install_amiberry_flavour amiberry "8.1.5"
+    install_amiberry_flavour amiberry "8.1.6"
 fi
-install_amiberry_flavour amiberry-lite "8.1.5"
+install_amiberry_flavour amiberry-lite "8.1.6"
+```
+
+---
+
+### Issue 9: Amiberry .deb Downloaded but Not Installed (Filename Mismatch)
+
+**Context:** Surfaced during the first VM test of the AmiDeb installer ISO (which runs
+`Install-nonroot.sh --unattended` from a first-boot service). See
+`docs/superpowers/specs/2026-05-24-amideb-amibootenv-design.md`.
+
+**Symptoms:**
+
+The first-boot log showed the Amiberry release zip downloading and unpacking fine, then:
+
+```
+inflating: amiberry_8.1.6+trixie_amd64.deb
+amiberry installer not found! Please download and install manually.
+```
+
+Amiberry was never installed, so the non-root getty override was never written and the
+system booted to the upstream root-mode autologin instead of Amiberry.
+
+**Root Cause:**
+
+The pinned-version path in `install_amiberry_flavour` built an exact filename from version
+and architecture only:
+
+```bash
+debfile="./${package_name}_${package_version}_${arch}.deb"   # amiberry_8.1.6_amd64.deb
+```
+
+BlitterStudio's packages embed the Debian codename in the .deb name
+(`amiberry_8.1.6+trixie_amd64.deb`), so the constructed path never matched and
+`[[ -f $debfile ]]` failed. (The unpinned/"latest" path already used a glob and was
+unaffected - only the pinned-version path was broken.)
+
+**Solution:**
+
+Resolve the .deb by glob in the pinned-version path, both before and after the unzip, so
+the `+trixie` suffix is matched:
+
+```bash
+# Before
+debfile="./${package_name}_${package_version}_${arch}.deb"
+
+# After
+debfile=$(ls -vr ./${package_name}_${package_version}*${arch}.deb 2>/dev/null | head -1)
+```
+
+The `[[ -f $debfile ]]` test was also quoted (`[[ -f "$debfile" ]]`) so an empty glob
+result is handled correctly.
+
+---
+
+### Issue 10: First-Boot Setup Silently "Succeeded" With No Amiberry
+
+**Symptoms:**
+
+After Issue 9, the first-boot service reported success, removed itself, and rebooted - even
+though Amiberry had not installed - leaving a system with no emulator and the wrong getty.
+
+**Root Cause:**
+
+`Install-nonroot.sh` ended its "Amiberry not found" branch with a plain `echo` and exited 0,
+so the calling first-boot wrapper (`if bash Install-nonroot.sh --unattended; then`) treated
+the run as successful.
+
+**Solution:**
+
+Made the failure path exit non-zero so callers detect it and retry:
+
+```bash
+echo "Amiberry not found. Installation did not complete successfully. Damn!"
+exit 1
+```
+
+The first-boot service now stays enabled on failure (retries next boot, keeps the log) rather
+than rebooting into a broken state.
+
+---
+
+### Issue 11: amiberry-lite Attempted on amd64 (404)
+
+**Symptoms:**
+
+```
+amiberry-lite-v8.1.6-...-amd64.zip ... HTTP request sent, awaiting response... 404 Not Found
+```
+
+**Root Cause:**
+
+`amiberry-lite` is the Raspberry Pi / ARM (SDL2) build. Its release track is separate (latest
+is v5.9.2) and it has no amd64 or Trixie assets, yet `Install-nonroot.sh` always tried to
+install it, pinned to `8.1.6`.
+
+**Solution:**
+
+Only attempt `amiberry-lite` on arm64, and let it resolve its own latest release (no version
+pin):
+
+```bash
+if [[ "${arch}" == "arm64" ]]; then
+    install_amiberry_flavour amiberry-lite
+fi
+```
+
+---
+
+### Issue 12: Premature chmod of Generated options_ex.sh
+
+**Symptoms:**
+
+```
+chmod: cannot access '/AmiBE/bin/options_ex.sh': No such file or directory
+```
+
+(Non-fatal, printed twice during install.)
+
+**Root Cause:**
+
+The explicit `chmod` of `options_ex.sh` (added for Issue 4) ran before the file existed -
+it is a cache file generated later by `boot-handler.sh` -> `config.sh`, and is not shipped in
+the upstream archive.
+
+**Solution:**
+
+Guard the early chmod so it only runs if the file is already present; the post-generation
+chmod near the end of the script handles the normal case:
+
+```bash
+if [[ -f "${base_path}/bin/options_ex.sh" ]]; then
+    chmod +x "${base_path}/bin/options_ex.sh"
+    chmod u+w "${base_path}/bin/options_ex.sh"
+fi
+```
+
+---
+
+### Issue 13: Data-Loss Warning Shown During Unattended Install
+
+**Symptoms:**
+
+On the AmiDeb first-boot (unattended) install, the interactive data-loss warning still
+printed:
+
+```
+WARNING!
+
+AmiBootEnv should ONLY be installed on a clean, minimal Debian Linux system.
+...
+This installer MUST be run as ROOT. ...
+```
+
+This is meaningless during an automated CD install (there is no operator to read it, and the
+disk has just been freshly partitioned), but it must remain for manual installs on amd64 or
+Raspberry Pi.
+
+**Root Cause:**
+
+The WARNING block printed unconditionally, before the `unattended` check that guards the
+`Proceed? (Y/N)` prompt.
+
+**Solution:**
+
+Moved the whole WARNING block into the interactive (non-unattended) branch, so it prints only
+when a human is being asked to confirm:
+
+```bash
+if [[ $unattended -eq 1 ]]; then
+    # Unattended (e.g. AmiDeb first-boot) install: skip warning + confirmation.
+    answer="Y"
+    echo "Unattended mode: proceeding with installation."
+else
+    echo "WARNING!"
+    # ... full warning text ...
+    echo -n "Proceed with installation? (Y/N) : "
+    read answer
+fi
+```
+
+Unattended runs now print only a one-line "Unattended mode: proceeding with installation."
+notice; manual installs are unchanged (full warning plus the Y/N prompt).
+
+---
+
+### Issue 14: PipeWire Audio Errors at Amiberry Start/Quit
+
+**Symptoms:**
+
+At Amiberry start and on quit, the console showed (audio still worked):
+
+```
+error: XDG_RUNTIME_DIR is invalid or not set in the environment.
+[E] pw.conf | [ conf.c: 1215 pw_conf_load_conf_for_context()] can't load config client.conf: No such file or directory
+```
+
+(The `IPC: Listening on /tmp/amiberry.sock` line on the same screen is normal Amiberry output,
+not an error.)
+
+**Root Cause:**
+
+Amiberry's SDL2 audio probes PipeWire first. Because Amiberry is launched via
+`su - amiberry -c` from the getty service - not a full login session - `systemd-logind` never
+created `/run/user/<uid>` or set `XDG_RUNTIME_DIR`, and there is no per-user PipeWire instance
+or `client.conf`. PipeWire's client library prints the errors, then SDL falls back to ALSA
+(which is what actually produced the sound, since the `amiberry` user is in the `audio` group
+and Master is unmuted).
+
+**Solution (two parts):**
+
+1. Force SDL straight to ALSA so the failing PipeWire probe never happens - this removed the
+   `pw.conf ... client.conf` lines. Direct ALSA is the right backend for a single-application
+   kiosk (lower latency, no audio daemon or user session needed); the only things given up
+   (multi-app mixing, Bluetooth audio) are not needed here.
+
+2. The `XDG_RUNTIME_DIR is invalid or not set` warning persisted (a separate library probe,
+   not the audio path). Since the `su -c` getty launch is not a login session, logind never
+   sets `XDG_RUNTIME_DIR`. A private runtime dir is created via tmpfiles (recreated each boot)
+   and passed on the launch.
+
+The getty override written by `Install-nonroot.sh` now sets both:
+
+```bash
+# /etc/tmpfiles.d/amiberry.conf
+d /run/amiberry 0700 amiberry amiberry -
+
+# getty@tty1 override ExecStart
+ExecStart=-/usr/bin/su - amiberry -c "XDG_RUNTIME_DIR=/run/amiberry SDL_AUDIODRIVER=alsa /AmiBE/bin/launch.sh"
+```
+
+---
+
+### Issue 15: No Volume Control in the Exit Menu
+
+**Symptoms:**
+
+The AmiBootEnv exit menu offered only Amiberry / Edit / Terminal / Reboot / Shutdown, with no
+way to adjust the system volume without dropping to a shell. The original AmiDeb menu had an
+Alsamixer entry.
+
+**Solution:**
+
+Added a `(V)olume` entry to the `main.sh` exit menu that launches `alsamixer`. Like the editor
+and terminal entries, it is wrapped with `script -q -c` to allocate a pseudo-terminal under
+the `su -c` session (alsamixer is an ncurses TUI). On exit it runs `sudo alsactl store` so the
+chosen level persists across reboots (the sudoers rules already allow this without a password):
+
+```bash
+elif [[ "${abe_menu_selection}" == *"(V)"* ]]; then
+    if command -v alsamixer &> /dev/null; then
+        script -q -c "alsamixer" /dev/null
+        sudo alsactl store 2>/dev/null
+    fi
+fi
+```
+
+Volume can also be adjusted inside Amiberry's own Sound panel (emulated output level) or, for
+the system master, via `amixer set Master 5%+` / `5%-` from the Terminal entry.
+
+---
+
+### Issue 16: No Way Back From the System Selector to the Exit Menu
+
+**Symptoms:**
+
+Selecting `(A)miberry` from the exit menu opens the system-to-emulate selector (AROS / A500 /
+A1200, etc.). Once there, the only way forward was to boot a system - there was no way to get
+back to the exit menu (shutdown / reboot / volume) without launching an emulation and quitting
+it.
+
+**Solution:**
+
+Added a `(B)ack to Menu` entry to the system selector in `main.sh` (the
+`abe_use_postboot_selector` path). When chosen, `launch_amiberry` returns *without* launching
+Amiberry, so the exit menu is shown again:
+
+```bash
+echo "${menu_item_back}" >> "${systems_list_file}"
+...
+if [[ "${abe_menu_selection}" == *"(B)"* ]]; then
+    echo "${abe_default_config}" > "${systems_list_file}.selection"  # don't remember Back
+    abe_back_to_menu=1
+    return
+fi
+```
+
+Because the exit menu normally auto-times-out and relaunches Amiberry (~3s), arriving via Back
+would otherwise bounce straight back to the selector. So when `abe_back_to_menu` is set, the
+first exit-menu iteration waits for an explicit choice instead of timing out:
+
+```bash
+if [[ $abe_back_to_menu -eq 1 ]]; then
+    exit_menu_timeout=86400
+    abe_back_to_menu=0
+else
+    exit_menu_timeout=${abe_amiberry_exit_timeout:-3}
+fi
+. "${my_path}/abe-menu.sh" "${exit_menu_file}" ${exit_menu_timeout}
+```
+
+Picking Back also resets the selector's remembered default so "Back to Menu" never becomes the
+auto-selected entry.
+
+---
+
+### Issue 17: Manual Install Missing Samba and an Install Log
+
+**Symptoms:**
+
+A manual install on a Raspberry Pi (running `sudo ./Install-nonroot.sh` as a normal user, the
+non-CD path) completed but Samba was never installed, so the `Amiga` network share was
+unavailable. There was also no install logfile to inspect after the fact.
+
+**Cause:**
+
+All Samba setup lived only in the AmiDeb CD/unattended flow:
+
+- `preseed.cfg` installed the `samba` package and copied `smb.conf`.
+- `amibootenv-firstboot.sh` ran `smbpasswd` and enabled `smbd`, and logged everything to
+  `/var/log/amibootenv-firstboot.log` via `exec > >(tee -a ...)`.
+
+`Install-nonroot.sh` itself touched neither Samba nor logging, so a manual run got no share and
+left no log.
+
+**Solution:**
+
+Folded both into `Install-nonroot.sh` so the manual path (Raspberry Pi / amd64) matches the CD
+path. All steps are idempotent, so running again on the CD path is harmless.
+
+Logging, added right after the root check (writes to `/AmiBE/var/log/install.log`):
+
+```bash
+install_log="${base_path}/var/log/install.log"
+mkdir -p "${base_path}/var/log" 2>/dev/null
+exec > >(tee -a "${install_log}") 2>&1
+echo "=== ${application_name} install started: $(date) ==="
+```
+
+Samba setup, added in the success branch (after the amiberry user exists and boot-handler has
+run). It installs the package, copies the bundled `smb.conf` (preserving the distro original
+once), sets the share login for the `amiberry` user to the default `amiberry` password to match
+the CD install, then enables and restarts `smbd`:
+
+```bash
+install_package samba
+cp "${my_path}/smb.conf" /etc/samba/smb.conf
+printf 'amiberry\namiberry\n' | smbpasswd -s -a "${amiberry_user}"
+systemctl enable smbd; systemctl restart smbd
 ```
 
 ---
